@@ -19,26 +19,33 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
     private static PoliceCar policeCar = null;
     private MinionState state = MinionState.ON_AIR;
     private NavMeshAgent agent;
+    private Rigidbody rb;
     private Transform _transform;
     private Vector3 destination = Vector3.zero;
     private BoxCollider boxCollider;
+    private Animator anim = null;
     private Stuff targetStuff = null;
     private Slot<Stuff, Minion> targetSlot = null;
     private Slot<Police, Minion> targetPoliceSlot = null;
     private Police chasingBy = null;
     private bool inTruck = false;
     private Minion targetMinion = null;
+    public ProjectileMotion.Motion Motion;
+    private float stateTime = -1;
 
     public MinionState State { get => state; }
     public Police ChasingBy { get => chasingBy; set => chasingBy = value; }
     public Slot<Minion, Police> Slot { get => slot; }
     public Transform Transform { get => _transform; }
     public Slot<Police, Minion> TargetPoliceSlot { get => targetPoliceSlot; set => targetPoliceSlot = value; }
+    public Rigidbody Rigidbody { get => rb; }
 
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         boxCollider = GetComponent<BoxCollider>();
+        rb = GetComponent<Rigidbody>();
+        anim = GetComponent<Animator>();
         _transform = transform;
         if (!truck)
             truck = FindObjectOfType<Truck>();
@@ -48,9 +55,13 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
 
     private void Update()
     {
-        if (state == MinionState.GOING_TO_RESCUE)
+        if (state == MinionState.HOLDING_STUFF && Time.time > stateTime + 10 && Vector3.Distance(_transform.position, truck.Transform.position) > 30)
         {
-            if (targetMinion.gameObject.activeSelf)
+            ChangeState(MinionState.RETURNING);
+        }
+        else if (state == MinionState.GOING_TO_RESCUE)
+        {
+            if (targetMinion.gameObject.activeSelf && targetMinion.state == MinionState.BEING_RESCUED)
             {
                 agent.SetDestination(targetMinion.Transform.position);
             }
@@ -63,7 +74,7 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         {
             agent.SetDestination(policeCar.MinionDestinationTransform.position);
         }
-        else if (state == MinionState.RETURNING)
+        else if (agent.enabled && state == MinionState.RETURNING)
         {
             agent.SetDestination(truck.transform.position);
         }
@@ -92,13 +103,16 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
                 canChangeState = state == MinionState.ARRESTED;
                 break;
             case MinionState.CARRYING_POLICE:
-                canChangeState = state == MinionState.GOING_TO_RESCUE || state == MinionState.ARRESTED;
+                canChangeState = state == MinionState.GOING_TO_RESCUE || state == MinionState.BEING_RESCUED;
                 break;
             case MinionState.GOING_TO_RESCUE:
                 canChangeState = state == MinionState.AVALIABLE;
                 break;
             case MinionState.RETURNING:
-                canChangeState = state == MinionState.AVALIABLE || state == MinionState.CARRYING_STUFF || state == MinionState.CARRYING_POLICE || state == MinionState.GOING_TO_RESCUE;
+                canChangeState = state == MinionState.AVALIABLE || state == MinionState.HOLDING_STUFF || state == MinionState.CARRYING_STUFF || state == MinionState.CARRYING_POLICE || state == MinionState.GOING_TO_RESCUE;
+                break;
+            case MinionState.RETURN_ANIMATING:
+                canChangeState = state == MinionState.RETURNING;
                 break;
             default:
                 canChangeState = true;
@@ -107,103 +121,187 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         if (canChangeState)
         {
             state = newState;
+            stateTime = Time.time;
             switch (state)
             {
                 case MinionState.ON_AIR:
-                    agent.enabled = false;
-                    boxCollider.enabled = false;
-                    targetStuff = null;
-                    targetSlot = null;
-                    targetMinion = null;
-                    chasingBy = null;
+                    Enter_ON_AIR_State();
                     break;
                 case MinionState.AVALIABLE:
-                    agent.enabled = false;
-                    boxCollider.enabled = false;
-                    targetStuff = null;
-                    targetSlot = null;
-                    targetMinion = null;
-                    chasingBy = null;
-                    if (!SearchTask())
-                        ChangeState(MinionState.RETURNING);
+                    Enter_AVALIABLE_State();
                     break;
                 case MinionState.GOING_TO_STUFF:
-                    boxCollider.enabled = true;
-                    agent.enabled = true;
-                    targetMinion = null;
-                    agent.speed = normalSpeed;
-                    agent.SetDestination(destination);
+                    Enter_GOING_TO_STAFF_State();
                     break;
                 case MinionState.HOLDING_STUFF:
-                    boxCollider.enabled = true;
-                    agent.enabled = false;
-                    targetMinion = null;
-                    _transform.parent = targetSlot.SlotTransform;
-                    _transform.SetPositionAndRotation(targetSlot.SlotTransform.position, targetSlot.SlotTransform.rotation);
+                    Enter_HOLDING_STUFF_State();
                     break;
                 case MinionState.CARRYING_STUFF:
-                    boxCollider.enabled = true;
-                    agent.enabled = false;
-                    targetMinion = null;
+                    Enter_CARRYING_STUFF_State();
                     break;
                 case MinionState.ARRESTED:
-                    agent.enabled = true;
-                    boxCollider.enabled = true;
-                    agent.speed = carryingSpeed;
-                    targetSlot.Abandon();
-                    targetStuff = null;
-                    targetSlot = null;
-                    targetMinion = null;
-                    _transform.parent = null;
-
+                    Enter_ARRESTED_State();
                     break;
                 case MinionState.BEING_RESCUED:
-                    agent.enabled = true;
-                    boxCollider.enabled = true;
-                    agent.speed = carryingSpeed;
-                    targetStuff = null;
-                    targetSlot = null;
-                    targetMinion = null;
+                    Enter_BEING_RESCUED_State();
                     break;
                 case MinionState.CARRYING_POLICE:
-                    agent.enabled = false;
-                    boxCollider.enabled = false;
-                    targetStuff = null;
-                    chasingBy = null;
-                    targetPoliceSlot.Occupy(this);
-                    _transform.parent = targetPoliceSlot.SlotTransform;
-                    _transform.SetPositionAndRotation(targetPoliceSlot.SlotTransform.position, targetPoliceSlot.SlotTransform.rotation);
+                    Enter_CARRYING_POLICE_State();
                     break;
                 case MinionState.GOING_TO_RESCUE:
-                    agent.enabled = true;
-                    boxCollider.enabled = true;
-                    agent.speed = normalSpeed;
-                    targetStuff = null;
-                    targetSlot = null;
+                    Enter_GOING_TO_RESCUE_State();
                     break;
                 case MinionState.RETURNING:
-                    agent.enabled = true;
-                    boxCollider.enabled = true;
-                    agent.speed = normalSpeed;
-                    _transform.parent = null;
-                    targetStuff = null;
-                    targetSlot = null;
-                    targetMinion = null;
-                    if (chasingBy)
-                    {
-                        chasingBy.ChangeState(Police.PoliceState.RETURNING);
-                    }
-                    if (!inTruck)
-                        agent.SetDestination(truck.transform.position);
-                    else
-                        GetOnTruck();
+                    Enter_RETURNING_State();
+                    break;
+                case MinionState.RETURN_ANIMATING:
+                    Enter_RETURN_ANIMATING_State();
                     break;
             }
         }
         else
-        {
             Debug.Log(string.Format("Invalid Minion state transition: {0}=>{1}", state, newState), this);
+    }
+
+    private void Enter_ON_AIR_State()
+    {
+        agent.enabled = false;
+        boxCollider.enabled = false;
+        anim.enabled = false;
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion = null;
+        chasingBy = null;
+        rb.isKinematic = false;
+        Rigidbody.AddForce(Motion.Force, ForceMode.Impulse);
+        Rigidbody.AddTorque(Motion.Force, ForceMode.Impulse);
+        LeanTween.delayedCall(Motion.Time + Random.Range(0.2f, 0.5f), () =>
+        {
+            _transform.LeanMoveY(0.1f, 0.2f);
+            _transform.LeanRotate(Vector3.zero, 0.2f).setOnComplete(() =>
+            {
+                ChangeState(MinionState.AVALIABLE);
+            });
+        });
+    }
+
+    private void Enter_AVALIABLE_State()
+    {
+        agent.enabled = false;
+        boxCollider.enabled = false;
+        anim.enabled = false;
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion = null;
+        chasingBy = null;
+        rb.isKinematic = true;
+        if (!SearchTask())
+            ChangeState(MinionState.RETURNING);
+    }
+
+    private void Enter_GOING_TO_STAFF_State()
+    {
+        boxCollider.enabled = true;
+        agent.enabled = true;
+        anim.enabled = true;
+        targetMinion = null;
+        agent.speed = normalSpeed;
+        agent.SetDestination(destination);
+    }
+
+    private void Enter_HOLDING_STUFF_State()
+    {
+        boxCollider.enabled = true;
+        agent.enabled = false;
+        anim.enabled = true;
+        targetMinion = null;
+        _transform.parent = targetSlot.SlotTransform;
+        _transform.SetPositionAndRotation(targetSlot.SlotTransform.position, targetSlot.SlotTransform.rotation);
+        targetStuff.TakePosition(this);
+    }
+
+    private void Enter_CARRYING_STUFF_State()
+    {
+        boxCollider.enabled = true;
+        agent.enabled = false;
+        anim.enabled = true;
+        targetMinion = null;
+        if (!(chasingBy && chasingBy.TargetMinion != this))
+            chasingBy = null;
+    }
+
+    private void Enter_ARRESTED_State()
+    {
+        agent.enabled = true;
+        boxCollider.enabled = true;
+        anim.enabled = false;
+        agent.speed = carryingSpeed;
+        targetSlot.Abandon();
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion = null;
+        Debug.Log("dene " + targetSlot, this);
+        _transform.parent = null;
+    }
+
+    private void Enter_BEING_RESCUED_State()
+    {
+        agent.enabled = true;
+        boxCollider.enabled = true;
+        anim.enabled = false;
+        agent.speed = carryingSpeed;
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion = null;
+    }
+
+    private void Enter_CARRYING_POLICE_State()
+    {
+        agent.enabled = false;
+        boxCollider.enabled = false;
+        anim.enabled = true;
+        targetStuff = null;
+        chasingBy = null;
+        targetPoliceSlot.Occupy(this);
+        _transform.parent = targetPoliceSlot.SlotTransform;
+        _transform.SetPositionAndRotation(targetPoliceSlot.SlotTransform.position, targetPoliceSlot.SlotTransform.rotation);
+    }
+
+    private void Enter_GOING_TO_RESCUE_State()
+    {
+        agent.enabled = true;
+        boxCollider.enabled = true;
+        anim.enabled = true;
+        agent.speed = normalSpeed;
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion.ChangeState(MinionState.BEING_RESCUED);
+    }
+
+    private void Enter_RETURNING_State()
+    {
+        agent.enabled = true;
+        boxCollider.enabled = true;
+        anim.enabled = true;
+        agent.speed = normalSpeed;
+        _transform.parent = null;
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion = null;
+        if (chasingBy)
+        {
+            chasingBy.ChangeState(Police.PoliceState.RETURNING);
+            chasingBy = null;
         }
+        if (!inTruck)
+            agent.SetDestination(truck.transform.position);
+        else
+            GetOnTruck();
+    }
+
+    private void Enter_RETURN_ANIMATING_State()
+    {
+
     }
 
     private bool SearchTask()
@@ -281,13 +379,14 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
 
     public void GetOnTruck()
     {
+        truck.NumberOfMinionsInTruck++;
         truck.RemoveMinion(this);
-        truck.TotalNumberOfMinionsInTruck++;
     }
 
     public void GetOnPoliceCar()
     {
         truck.RemoveMinion(this);
+        truck.LostMinion();
     }
 
     private void OnTriggerEnter(Collider other)
@@ -299,7 +398,6 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
             if (stuff == targetStuff)
             {
                 ChangeState(MinionState.HOLDING_STUFF);
-                targetStuff.TakePosition(this);
             }
         }
         else if (state == MinionState.RETURNING && inTruck)
@@ -308,9 +406,12 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         }
         else if ((state == MinionState.ARRESTED || state == MinionState.BEING_RESCUED) && other.CompareTag("Police Car"))
         {
+            policeCar.Bounce(1.3f);
             Police police = slot.OccupiedBy;
             slot.Abandon();
             police.ChangeState(Police.PoliceState.RETURNING);
+            police.EnterToTheVehicle(policeCar.Transform);
+            EnterToTheVehicle(policeCar.Transform);
             GetOnPoliceCar();
         }
         else if (state == MinionState.GOING_TO_RESCUE && other.CompareTag("Minion"))
@@ -335,12 +436,31 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
 
     public void OnObjectSpawn()
     {
+        agent.enabled = false;
+        boxCollider.enabled = false;
+        anim.enabled = false;
+        targetStuff = null;
+        targetSlot = null;
+        targetMinion = null;
         chasingBy = null;
+        rb.isKinematic = false;
+        inTruck = false;
     }
 
     public void Abandon()
     {
+        _transform.parent = null;
+    }
+    public void EnterToTheVehicle(Transform target)
+    {
+        boxCollider.enabled = false;
+        agent.enabled = false;
+        _transform.LeanScale(Vector3.zero, 0.4f).setOnComplete(() => _transform.localScale = Vector3.one);
+        ProjectileMotion.SimulateProjectileMotion(_transform, target.position, 0.5f, () =>
+        {
+            gameObject.SetActive(false);
+        });
     }
 
-    public enum MinionState { ON_AIR, AVALIABLE, GOING_TO_STUFF, HOLDING_STUFF, CARRYING_STUFF, CARRYING_POLICE, ARRESTED, GOING_TO_RESCUE, BEING_RESCUED, RETURNING }
+    public enum MinionState { ON_AIR, AVALIABLE, GOING_TO_STUFF, HOLDING_STUFF, CARRYING_STUFF, CARRYING_POLICE, ARRESTED, GOING_TO_RESCUE, BEING_RESCUED, RETURNING, RETURN_ANIMATING }
 }

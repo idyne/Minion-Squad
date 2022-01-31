@@ -2,29 +2,36 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using FateGames;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Rigidbody))]
 public class Stuff : MonoBehaviour, IMoveable
 {
     [SerializeField] private Slot<Stuff, Minion>[] slots;
+    [SerializeField] private float holdHigh = 0.5f;
+    [SerializeField] private Transform meshTransform = null;
     private static Truck truck = null;
     private BoxCollider boxCollider;
     private StuffState state = StuffState.IDLE;
     private NavMeshAgent agent = null;
+    private Animator animator = null;
+    private Transform _transform = null;
     public Slot<Stuff, Minion>[] Slots { get => slots; }
 
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         boxCollider = GetComponent<BoxCollider>();
+        animator = GetComponent<Animator>();
+        _transform = transform;
         if (!truck)
             truck = FindObjectOfType<Truck>();
     }
 
     private void Update()
     {
-        if (state == StuffState.MOVING)
+        if (agent.enabled && state == StuffState.MOVING)
         {
             agent.SetDestination(truck.Transform.position);
         }
@@ -46,7 +53,10 @@ public class Stuff : MonoBehaviour, IMoveable
             if (slot.OccupiedBy == minion)
                 slot.Reach();
             if (isAllSlotsReached)
+            {
                 isAllSlotsReached = slot.IsReached;
+                if (slot.IsReached && !slot.IsOccupied()) Debug.Log("YARRRAAAAA", this);
+            }
         }
         if (isAllSlotsReached)
         {
@@ -77,15 +87,20 @@ public class Stuff : MonoBehaviour, IMoveable
                 case StuffState.IDLE:
                     agent.enabled = false;
                     boxCollider.enabled = true;
+                    animator.enabled = false;
+                    StopMoving();
                     break;
                 case StuffState.MOVING:
                     for (int i = 0; i < slots.Length; i++)
                     {
                         Minion minionInSlot = slots[i].OccupiedBy;
+                        if (!minionInSlot) Debug.Log("sad", this);
                         minionInSlot.ChangeState(Minion.MinionState.CARRYING_STUFF);
                     }
                     boxCollider.enabled = true;
                     agent.enabled = true;
+                    StartMoving();
+                    animator.enabled = true;
                     agent.SetDestination(truck.Transform.position);
                     break;
             }
@@ -104,8 +119,10 @@ public class Stuff : MonoBehaviour, IMoveable
             {
                 Minion minion = slots[i].OccupiedBy;
                 minion.ChangeState(Minion.MinionState.RETURNING);
+                minion.EnterToTheVehicle(truck.Transform);
             }
-            gameObject.SetActive(false);
+            truck.Bounce(1.3f);
+            EnterToTheVehicle(truck.Transform);
         }
     }
 
@@ -122,5 +139,24 @@ public class Stuff : MonoBehaviour, IMoveable
         }
     }
 
+private void StartMoving()
+    {
+        meshTransform.localPosition = new Vector3(0, holdHigh, 0);
+    }
+
+    private void StopMoving()
+    {
+        meshTransform.localPosition = Vector3.zero;
+    }
+
+    private void EnterToTheVehicle(Transform target)
+    {
+        boxCollider.enabled = false;
+        agent.enabled = false;
+        _transform.LeanScale(Vector3.zero, 0.5f);
+        ProjectileMotion.SimulateProjectileMotion(_transform, target.position, 0.5f, () => {
+            Destroy(gameObject);
+        });
+    }
     public enum StuffState { IDLE, MOVING }
 }

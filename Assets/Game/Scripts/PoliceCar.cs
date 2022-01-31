@@ -7,24 +7,28 @@ using System.Linq;
 public class PoliceCar : MonoBehaviour
 {
     [SerializeField] private int maxNumberOfPolices = 5;
-    [SerializeField] private int checkRange = 30;
+    [SerializeField] private int checkRange = 20;
     [SerializeField] private LayerMask minionLayerMask = 0;
     [SerializeField] private Transform spawnPositionTransform;
     [SerializeField] private Transform minionDestinationTransform;
     [SerializeField] private float spawnCooldown = 3f;
+    [SerializeField] private Transform meshTransform = null;
+    private Animator anim;
     private Transform _transform;
     private List<Police> policesOnField = new List<Police>();
     public Transform MinionDestinationTransform { get => minionDestinationTransform; }
     public List<Police> PolicesOnField { get => policesOnField; }
+    public Transform Transform { get => _transform; set => _transform = value; }
 
     private void Awake()
     {
         _transform = transform;
+        anim = GetComponent<Animator>();
     }
 
-    private void Start()
+    public void Come()
     {
-        SearchTask();
+        anim.SetTrigger("Come");
     }
 
     private void SearchTask()
@@ -111,5 +115,13 @@ public class PoliceCar : MonoBehaviour
     {
         policesOnField.Remove(police);
         police.gameObject.SetActive(false);
+    }
+    public void Bounce(float size)
+    {
+        LeanTween.cancel(meshTransform.gameObject);
+        meshTransform.LeanScale(new Vector3(size, size, 1), 0.15f).setOnComplete(() =>
+        {
+            meshTransform.LeanScale(Vector3.one, 0.15f);
+        });
     }
 }

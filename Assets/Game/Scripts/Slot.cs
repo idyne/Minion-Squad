@@ -25,7 +25,7 @@ public class Slot<T1, T2> where T1 : IMoveable
 
     public bool Abandon()
     {
-        if (!IsOccupied()) return false;
+        if (!IsOccupied()) { Debug.Log("mümkün deðil"); return false; }
         occupiedBy = default;
         owner.Abandon();
         IsReached = false;
