@@ -52,11 +52,7 @@ public class Truck : MonoBehaviour
         _transform.position = Vector3.MoveTowards(_transform.position, _transform.position + _transform.forward, Time.deltaTime * 1);
     }
 
-    public void LostMinion()
-    {
-        totalNumberOfMinions--;
-        SetNumberText();
-    }
+
 
     private void SetNumberText()
     {
@@ -87,18 +83,18 @@ public class Truck : MonoBehaviour
         }
     }
 
-    public void RemoveMinion(Minion minion)
+    public void DeactivateMinion(Minion minion)
     {
+        numberOfMinionsInTruck++;
         minionsOnField.Remove(minion);
+        minion.ChangeState(Minion.MinionState.INACTIVE);
         minion.gameObject.SetActive(false);
         SetNumberText();
     }
-    public void Bounce(float size)
+
+    public void LoseMinion()
     {
-        LeanTween.cancel(mesh.gameObject);
-        mesh.LeanScale(new Vector3(size, size, 1), 0.15f).setOnComplete(() =>
-        {
-            mesh.LeanScale(Vector3.one, 0.15f);
-        });
+        totalNumberOfMinions--;
+        SetNumberText();
     }
 }

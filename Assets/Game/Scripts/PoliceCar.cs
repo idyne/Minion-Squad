@@ -5,7 +5,7 @@ using UnityEngine;
 using System.Linq;
 
 public class PoliceCar : MonoBehaviour
-{
+{/*
     [SerializeField] private int maxNumberOfPolices = 5;
     [SerializeField] private int checkRange = 20;
     [SerializeField] private LayerMask minionLayerMask = 0;
@@ -123,5 +123,5 @@ public class PoliceCar : MonoBehaviour
         {
             meshTransform.LeanScale(Vector3.one, 0.15f);
         });
-    }
+    }*/
 }

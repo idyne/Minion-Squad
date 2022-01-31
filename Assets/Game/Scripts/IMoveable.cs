@@ -4,5 +4,5 @@ using UnityEngine;
 
 public interface IMoveable
 {
-    public void Abandon();
+    public void GetAbandoned();
 }

@@ -6,8 +6,8 @@ using UnityEngine.AI;
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(NavMeshAgent))]
-public class Police : MonoBehaviour, IMoveable, IPooledObject
-{
+public class Police/* : MonoBehaviour, IMoveable, IPooledObject*/
+{/*
     [SerializeField] private Slot<Police, Minion>[] slots;
     [SerializeField] private float normalSpeed = 3.5f;
     [SerializeField] private float carryingSpeed = 2.5f;
@@ -192,7 +192,7 @@ public class Police : MonoBehaviour, IMoveable, IPooledObject
         if (other.CompareTag("Police Car")) inPoliceCar = false;
     }
 
-    public void Abandon()
+    public void GetAbandoned()
     {
         print("Police abandon");
     }
@@ -214,4 +214,4 @@ public class Police : MonoBehaviour, IMoveable, IPooledObject
     }
 
     public enum PoliceState { GOING_TO_MINION, CARRYING_MINION, BEING_CARRIED, RETURNING }
-}
+*/}

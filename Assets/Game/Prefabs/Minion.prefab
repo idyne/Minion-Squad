@@ -126,15 +126,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   stuffCheckRadius: 10
+  meshTransform: {fileID: 1703933161971603439}
   stuffLayermask:
     serializedVersion: 2
     m_Bits: 192
-  slot:
-    slotTransform: {fileID: 1484702385967280483}
-    owner: {fileID: 3260445339368950785}
-    IsReached: 0
   normalSpeed: 6
-  carryingSpeed: 3
 --- !u!195 &8853481789623322477
 NavMeshAgent:
   m_ObjectHideFlags: 0

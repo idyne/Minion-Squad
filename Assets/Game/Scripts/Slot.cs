@@ -23,13 +23,18 @@ public class Slot<T1, T2> where T1 : IMoveable
         return true;
     }
 
+    //Slota snaplenmiþ olsa da olmasa da çaðrýlabilir
     public bool Abandon()
     {
-        if (!IsOccupied()) { Debug.Log("mümkün deðil"); return false; }
-        occupiedBy = default;
-        owner.Abandon();
-        IsReached = false;
+        Clear();
+        owner.GetAbandoned();
         return true;
+    }
+
+    public void Clear()
+    {
+        occupiedBy = default;
+        IsReached = false;
     }
 
     public void Reach()
@@ -39,4 +44,5 @@ public class Slot<T1, T2> where T1 : IMoveable
 
     public Transform SlotTransform { get => slotTransform; }
     public T2 OccupiedBy { get => occupiedBy; }
+    public T1 Owner { get => owner; }
 }

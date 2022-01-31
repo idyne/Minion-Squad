@@ -3,38 +3,47 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using FateGames;
+using States.StuffState;
 
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Rigidbody))]
 public class Stuff : MonoBehaviour, IMoveable
 {
     [SerializeField] private Slot<Stuff, Minion>[] slots;
-    [SerializeField] private float holdHigh = 0.5f;
-    [SerializeField] private Transform meshTransform = null;
     private static Truck truck = null;
-    private BoxCollider boxCollider;
     private StuffState state = StuffState.IDLE;
+    private State currentState;
+    private Dictionary<StuffState, State> stateDictionary = new Dictionary<StuffState, State>();
     private NavMeshAgent agent = null;
     private Animator animator = null;
+    private bool inTruck = false;
     private Transform _transform = null;
     public Slot<Stuff, Minion>[] Slots { get => slots; }
+    public NavMeshAgent Agent { get => agent; }
+    public static Truck Truck { get => truck; }
+    public StuffState State { get => state; }
+    public Animator Animator { get => animator; }
+    public bool InTruck { get => inTruck; }
+    public Transform Transform { get => _transform; }
 
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
-        boxCollider = GetComponent<BoxCollider>();
         animator = GetComponent<Animator>();
         _transform = transform;
         if (!truck)
             truck = FindObjectOfType<Truck>();
+        agent.enabled = false;
+        animator.enabled = false;
+        stateDictionary.Add(StuffState.IDLE, new Idle(this, "IDLE"));
+        stateDictionary.Add(StuffState.MOVING, new Moving(this, "MOVING"));
+        stateDictionary.Add(StuffState.ANIMATING, new Animating(this, "ANIMATING"));
+        currentState = stateDictionary[StuffState.IDLE];
     }
 
     private void Update()
     {
-        if (agent.enabled && state == StuffState.MOVING)
-        {
-            agent.SetDestination(truck.Transform.position);
-        }
+        currentState.Update();
     }
 
     public Slot<Stuff, Minion> GetAvaliableSlot()
@@ -46,6 +55,8 @@ public class Stuff : MonoBehaviour, IMoveable
 
     public void TakePosition(Minion minion)
     {
+        minion.Transform.parent = minion.CurrentSlot.SlotTransform;
+        minion.Transform.SetPositionAndRotation(minion.CurrentSlot.SlotTransform.position, minion.CurrentSlot.SlotTransform.rotation);
         bool isAllSlotsReached = true;
         for (int i = 0; i < slots.Length; i++)
         {
@@ -53,110 +64,42 @@ public class Stuff : MonoBehaviour, IMoveable
             if (slot.OccupiedBy == minion)
                 slot.Reach();
             if (isAllSlotsReached)
-            {
                 isAllSlotsReached = slot.IsReached;
-                if (slot.IsReached && !slot.IsOccupied()) Debug.Log("YARRRAAAAA", this);
-            }
         }
         if (isAllSlotsReached)
-        {
             ChangeState(StuffState.MOVING);
-        }
     }
 
     public void ChangeState(StuffState newState)
     {
-        bool canChangeState;
-        switch (newState)
+        State state = stateDictionary[newState];
+        if (state.CanEnter())
         {
-            case StuffState.IDLE:
-                canChangeState = state == StuffState.MOVING;
-                break;
-            case StuffState.MOVING:
-                canChangeState = state == StuffState.IDLE;
-                break;
-            default:
-                canChangeState = true;
-                break;
-        }
-        if (canChangeState)
-        {
-            state = newState;
-            switch (state)
-            {
-                case StuffState.IDLE:
-                    agent.enabled = false;
-                    boxCollider.enabled = true;
-                    animator.enabled = false;
-                    StopMoving();
-                    break;
-                case StuffState.MOVING:
-                    for (int i = 0; i < slots.Length; i++)
-                    {
-                        Minion minionInSlot = slots[i].OccupiedBy;
-                        if (!minionInSlot) Debug.Log("sad", this);
-                        minionInSlot.ChangeState(Minion.MinionState.CARRYING_STUFF);
-                    }
-                    boxCollider.enabled = true;
-                    agent.enabled = true;
-                    StartMoving();
-                    animator.enabled = true;
-                    agent.SetDestination(truck.Transform.position);
-                    break;
-            }
-        }
-        else
-        {
-            Debug.Log(string.Format("Invalid Stuff state transition: {0}=>{1}", state, newState), this);
+            currentState.OnExit();
+            currentState = state;
+            this.state = newState;
+            currentState.OnEnter();
         }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (state == StuffState.MOVING && other.CompareTag("Truck"))
-        {
-            for (int i = 0; i < slots.Length; i++)
-            {
-                Minion minion = slots[i].OccupiedBy;
-                minion.ChangeState(Minion.MinionState.RETURNING);
-                minion.EnterToTheVehicle(truck.Transform);
-            }
-            truck.Bounce(1.3f);
-            EnterToTheVehicle(truck.Transform);
-        }
+        if (other.CompareTag("Truck")) inTruck = true;
+        currentState.OnTriggerEnter(other);
+    }
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Truck")) inTruck = false;
+        currentState.OnTriggerExit(other);
     }
 
-    public void Abandon()
+    public void GetAbandoned()
     {
         if (state == StuffState.MOVING)
-            ChangeState(StuffState.IDLE);
-        for (int i = 0; i < slots.Length; i++)
         {
-            Slot<Stuff, Minion> slot = slots[i];
-            Minion minion = slot.OccupiedBy;
-            if (minion)
-                minion.ChangeState(Minion.MinionState.HOLDING_STUFF);
+            ChangeState(StuffState.IDLE);
         }
     }
 
-private void StartMoving()
-    {
-        meshTransform.localPosition = new Vector3(0, holdHigh, 0);
-    }
-
-    private void StopMoving()
-    {
-        meshTransform.localPosition = Vector3.zero;
-    }
-
-    private void EnterToTheVehicle(Transform target)
-    {
-        boxCollider.enabled = false;
-        agent.enabled = false;
-        _transform.LeanScale(Vector3.zero, 0.5f);
-        ProjectileMotion.SimulateProjectileMotion(_transform, target.position, 0.5f, () => {
-            Destroy(gameObject);
-        });
-    }
-    public enum StuffState { IDLE, MOVING }
+    public enum StuffState { IDLE, MOVING, ANIMATING }
 }
