@@ -92,8 +92,11 @@ public class Truck : MonoBehaviour
         SetNumberText();
     }
 
-    public void LoseMinion()
+    public void LoseMinion(Minion minion)
     {
+        minionsOnField.Remove(minion);
+        minion.ChangeState(Minion.MinionState.INACTIVE);
+        minion.gameObject.SetActive(false);
         totalNumberOfMinions--;
         SetNumberText();
     }

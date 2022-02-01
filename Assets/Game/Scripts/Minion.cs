@@ -10,13 +10,15 @@ using States.MinionState;
 [RequireComponent(typeof(NavMeshAgent))]
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(BoxCollider))]
-public class Minion : MonoBehaviour, IPooledObject
+public class Minion : MonoBehaviour, IPooledObject, IMoveable
 {
     #region Properties
     [SerializeField] private float stuffCheckRadius = 5;
     [SerializeField] private Transform meshTransform = null;
     [SerializeField] private LayerMask stuffLayermask = 0;
     [SerializeField] private float normalSpeed = 3.5f;
+    [SerializeField] private float carryingSpeed = 2.5f;
+    [SerializeField] private Slot<Minion, Police> slot;
     private List<Stuff> overlapStuffs = new List<Stuff>();
     private static Truck truck = null;
     private MinionState state = MinionState.INACTIVE;
@@ -28,6 +30,7 @@ public class Minion : MonoBehaviour, IPooledObject
     private Slot<Stuff, Minion> targetSlot = null;
     private Slot<Stuff, Minion> currentSlot = null;
     private bool inTruck = false;
+    private bool inPoliceCar = false;
     private Minion targetMinion = null;
     private List<MinionState> transitionLog = new List<MinionState>();
     public ProjectileMotion.Motion Motion;
@@ -47,6 +50,9 @@ public class Minion : MonoBehaviour, IPooledObject
     public static Truck Truck { get => truck; }
     public Slot<Stuff, Minion> CurrentSlot { get => currentSlot; set => currentSlot = value; }
     public List<Stuff> OverlapStuffs { get => overlapStuffs; }
+    public Slot<Minion, Police> Slot { get => slot; }
+    public bool InPoliceCar { get => inPoliceCar; }
+    public Transform MeshTransform { get => meshTransform; }
     #endregion
 
     #region Unity Callbacks
@@ -68,6 +74,8 @@ public class Minion : MonoBehaviour, IPooledObject
         stateDictionary.Add(MinionState.GOING_TO_STUFF, new GoingToStuff(this, "GOING_TO_STUFF"));
         stateDictionary.Add(MinionState.HOLDING_STUFF, new HoldingStuff(this, "HOLDING_STUFF"));
         stateDictionary.Add(MinionState.CARRYING_STUFF, new CarryingStuff(this, "CARRYING_STUFF"));
+        stateDictionary.Add(MinionState.ARRESTED, new Arrested(this, "ARRESTED"));
+        stateDictionary.Add(MinionState.ARREST_ANIMATING, new ArrestAnimating(this, "ARREST_ANIMATING"));
         stateDictionary.Add(MinionState.RETURNING, new Returning(this, "RETURNING"));
         stateDictionary.Add(MinionState.RETURN_ANIMATING, new ReturnAnimating(this, "RETURN_ANIMATING"));
         stateDictionary.Add(MinionState.INACTIVE, new Inactive(this, "INACTIVE"));
@@ -79,6 +87,7 @@ public class Minion : MonoBehaviour, IPooledObject
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Truck")) inTruck = true;
+        else if (other.CompareTag("Police Car")) inPoliceCar = true;
         else if (other.CompareTag("Stuff"))
         {
             Stuff stuff = other.GetComponent<Stuff>();
@@ -91,6 +100,7 @@ public class Minion : MonoBehaviour, IPooledObject
     private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Truck")) inTruck = false;
+        else if (other.CompareTag("Police Car")) inPoliceCar = false;
         else if (other.CompareTag("Stuff"))
         {
             Stuff stuff = other.GetComponent<Stuff>();
@@ -116,9 +126,9 @@ public class Minion : MonoBehaviour, IPooledObject
             currentState.OnEnter();
         }
         else
-            Debug.Log(string.Format("Invalid Minion state transition: {0}=>{1}", state, newState), this);
+            Debug.LogError(string.Format("Invalid Minion state transition: {0}=>{1}", currentState.Name, state.Name), this);
     }
-    public enum MinionState { INACTIVE, ON_AIR, AVALIABLE, GOING_TO_STUFF, HOLDING_STUFF, CARRYING_STUFF, CARRYING_POLICE, ARRESTED, GOING_TO_RESCUE, BEING_RESCUED, RETURNING, RETURN_ANIMATING }
+    public enum MinionState { INACTIVE, ON_AIR, AVALIABLE, GOING_TO_STUFF, HOLDING_STUFF, CARRYING_STUFF, CARRYING_POLICE, ARRESTED, ARREST_ANIMATING, GOING_TO_RESCUE, BEING_RESCUED, RETURNING, RETURN_ANIMATING }
 
     #endregion
 
@@ -190,6 +200,13 @@ public class Minion : MonoBehaviour, IPooledObject
             currentSlot = null;
         }
     }
+
+    public void TakePosition(Police police)
+    {
+        police.Transform.parent = slot.SlotTransform;
+        police.Transform.SetPositionAndRotation(slot.SlotTransform.position, slot.SlotTransform.rotation);
+        slot.Reach();
+    }
     public void GetOnTruck()
     {
         meshTransform.LeanScale(Vector3.zero, 0.2f).setOnComplete(() => { truck.DeactivateMinion(this); });
@@ -211,4 +228,8 @@ public class Minion : MonoBehaviour, IPooledObject
         currentState = stateDictionary[state];
     }
 
+    public void GetAbandoned()
+    {
+        Debug.Log("GetAbandoned()", this);
+    }
 }

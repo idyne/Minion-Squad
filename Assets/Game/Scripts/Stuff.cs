@@ -80,6 +80,8 @@ public class Stuff : MonoBehaviour, IMoveable
             this.state = newState;
             currentState.OnEnter();
         }
+        else
+            Debug.LogError(string.Format("Invalid Stuff state transition: {0}=>{1}", currentState.Name, state.Name), this);
     }
 
     private void OnTriggerEnter(Collider other)

@@ -4,29 +4,38 @@ using UnityEngine;
 
 namespace States.MinionState
 {
-    public class Inactive : State
+    public class ArrestAnimating : State
     {
-        public Inactive(Minion minion, string name) : base(minion, name)
+        public ArrestAnimating(Minion minion, string name) : base(minion, name)
         {
         }
         public override bool CanEnter()
         {
-            return minion.State == Minion.MinionState.RETURN_ANIMATING || minion.State == Minion.MinionState.ARREST_ANIMATING;
+            return minion.State == Minion.MinionState.ARRESTED;
         }
 
         public override void OnEnter()
         {
-
+            ReachPoliceCar();
         }
 
         public override void OnExit()
         {
-        }
 
+        }
 
         public override void OnTriggerEnter(Collider other)
         {
 
+
+        }
+
+        private void ReachPoliceCar()
+        {
+            minion.MeshTransform.LeanScale(Vector3.zero, 0.2f).setOnComplete(() =>
+            {
+                Minion.Truck.LoseMinion(minion);
+            });
         }
 
         public override void OnTriggerExit(Collider other)

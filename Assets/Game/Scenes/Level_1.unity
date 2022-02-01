@@ -1153,7 +1153,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2697510986032249565, guid: 6d554ed416630364fa042db71f8cbc7c, type: 3}
       propertyPath: onStart.m_PersistentCalls.m_Calls.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2697510986032249565, guid: 6d554ed416630364fa042db71f8cbc7c, type: 3}
       propertyPath: onStart.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
@@ -2599,7 +2599,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8871329509998714139, guid: 99016b369cd276645bde8880d79d2f73, type: 3}
       propertyPath: numberOfMinionsInTruck
-      value: 30
+      value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 8871329509998714139, guid: 99016b369cd276645bde8880d79d2f73, type: 3}
       propertyPath: totalNumberOfMinionsInTruck
@@ -3969,7 +3969,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 3766904946235419023, guid: d4c8cc19936bf514d8a60ee185b3b25e, type: 3}
       propertyPath: pools.Array.data[4].size
-      value: 0
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 7550869262896145936, guid: d4c8cc19936bf514d8a60ee185b3b25e, type: 3}
       propertyPath: m_Name
@@ -5278,7 +5278,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1043689258730395239, guid: d3a5256127c99fd4d8b715961cbd9bf2, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4671911165487871712, guid: d3a5256127c99fd4d8b715961cbd9bf2, type: 3}
       propertyPath: m_LocalPosition.x
@@ -5329,8 +5329,16 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6565747844283674643, guid: d3a5256127c99fd4d8b715961cbd9bf2, type: 3}
+      propertyPath: checkRange
+      value: 40
+      objectReference: {fileID: 0}
+    - target: {fileID: 6565747844283674643, guid: d3a5256127c99fd4d8b715961cbd9bf2, type: 3}
       propertyPath: spawnCooldown
-      value: 2
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6565747844283674643, guid: d3a5256127c99fd4d8b715961cbd9bf2, type: 3}
+      propertyPath: numberOfPolicesInPoliceCar
+      value: 15
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: d3a5256127c99fd4d8b715961cbd9bf2, type: 3}

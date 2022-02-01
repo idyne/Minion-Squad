@@ -3,208 +3,141 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using States.PoliceState;
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(NavMeshAgent))]
-public class Police/* : MonoBehaviour, IMoveable, IPooledObject*/
-{/*
-    [SerializeField] private Slot<Police, Minion>[] slots;
+public class Police : MonoBehaviour, IPooledObject
+{
     [SerializeField] private float normalSpeed = 3.5f;
-    [SerializeField] private float carryingSpeed = 2.5f;
+    [SerializeField] private Transform meshTransform = null;
     private static PoliceCar policeCar = null;
-    private static Truck truck = null;
     private PoliceState state = PoliceState.GOING_TO_MINION;
+    private State currentState;
     private NavMeshAgent agent = null;
-    private BoxCollider boxCollider = null;
     private Animator anim = null;
-    private Minion targetMinion = null;
-    private Transform targetMinionTransform = null;
+    private Slot<Minion, Police> targetSlot = null;
+    private Slot<Minion, Police> currentSlot = null;
     private Transform _transform;
     private bool inPoliceCar = false;
+    private Dictionary<PoliceState, State> stateDictionary = new Dictionary<PoliceState, State>();
+    private List<Minion> overlapMinions = new List<Minion>();
+
+
 
     public PoliceState State { get => state; }
     public Transform Transform { get => _transform; }
-    public Minion TargetMinion { get => targetMinion; }
+    public Slot<Minion, Police> TargetSlot { get => targetSlot; set => targetSlot = value; }
+    public NavMeshAgent Agent { get => agent; }
+    public Animator Anim { get => anim; }
+    public bool InPoliceCar { get => inPoliceCar; }
+    public float NormalSpeed { get => normalSpeed; }
+    public static PoliceCar PoliceCar { get => policeCar; }
+    public List<Minion> OverlapMinions { get => overlapMinions; }
+    public Slot<Minion, Police> CurrentSlot { get => currentSlot; set => currentSlot = value; }
 
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
-        boxCollider = GetComponent<BoxCollider>();
         anim = GetComponent<Animator>();
         _transform = transform;
         if (!policeCar)
             policeCar = FindObjectOfType<PoliceCar>();
-        if (!truck)
-            truck = FindObjectOfType<Truck>();
+        InitializeStateDictionary();
+        currentState = stateDictionary[PoliceState.INACTIVE];
+    }
+
+    private void InitializeStateDictionary()
+    {
+        stateDictionary.Add(PoliceState.INACTIVE, new Inactive(this, "INACTIVE"));
+        stateDictionary.Add(PoliceState.GOING_TO_MINION, new GoingToMinion(this, "GOING_TO_MINION"));
+        stateDictionary.Add(PoliceState.CARRYING_MINION, new CarryingMinion(this, "CARRYING_MINION"));
+        stateDictionary.Add(PoliceState.RETURNING, new Returning(this, "RETURNING"));
+        stateDictionary.Add(PoliceState.GETTING_IN_POLICE_CAR, new GettingInPoliceCar(this, "GETTING_IN_POLICE_CAR"));
     }
 
     private void Update()
     {
-        if (agent.enabled && state == PoliceState.GOING_TO_MINION)
-        {
-            if (targetMinion.gameObject.activeSelf)
-            {
-                agent.SetDestination(targetMinionTransform.position);
-            }
-            else
-            {
-                ChangeState(PoliceState.RETURNING);
-            }
-        }
-        else if (agent.enabled && state == PoliceState.BEING_CARRIED)
-        {
-            Debug.Log(agent.enabled, this);
-            agent.SetDestination(truck.Transform.position);
-        }
-        else if (agent.enabled && state == PoliceState.RETURNING)
-        {
-            Debug.Log("hm", this);
-            agent.SetDestination(policeCar.MinionDestinationTransform.position);
-        }
+        currentState.Update();
     }
 
     public void ChangeState(PoliceState newState)
     {
-        bool canChangeState;
-        switch (newState)
+        State state = stateDictionary[newState];
+        if (state.CanEnter())
         {
-            case PoliceState.CARRYING_MINION:
-                canChangeState = state == PoliceState.GOING_TO_MINION;
-                break;
-            case PoliceState.BEING_CARRIED:
-                canChangeState = state == PoliceState.CARRYING_MINION;
-                break;
-            case PoliceState.RETURNING:
-                canChangeState = state == PoliceState.GOING_TO_MINION || state == PoliceState.CARRYING_MINION;
-                break;
-            default:
-                canChangeState = true;
-                break;
-        }
-        if (canChangeState)
-        {
-            state = newState;
-            switch (state)
-            {
-                case PoliceState.GOING_TO_MINION:
-                    boxCollider.enabled = true;
-                    agent.enabled = true;
-                    anim.enabled = true;
-                    agent.speed = normalSpeed;
-                    break;
-                case PoliceState.CARRYING_MINION:
-                    boxCollider.enabled = true;
-                    agent.enabled = false;
-                    anim.enabled = true;
-                    Slot<Minion, Police> slot = targetMinion.Slot;
-                    slot.Occupy(this);
-                    _transform.parent = slot.SlotTransform;
-                    _transform.SetPositionAndRotation(slot.SlotTransform.position, slot.SlotTransform.rotation);
-                    targetMinion.ChangeState(Minion.MinionState.ARRESTED);
-                    break;
-                case PoliceState.BEING_CARRIED:
-                    boxCollider.enabled = true;
-                    agent.enabled = true;
-                    anim.enabled = false;
-                    agent.speed = carryingSpeed;
-                    _transform.parent = null;
-                    targetMinion.Slot.Abandon();
-                    agent.SetDestination(truck.Transform.position);
-                    break;
-                case PoliceState.RETURNING:
-                    boxCollider.enabled = true;
-                    agent.enabled = true;
-                    anim.enabled = true;
-                    agent.speed = normalSpeed;
-                    _transform.parent = null;
-                    if (inPoliceCar)
-                        GetOnPoliceCar();
-                    else
-                    {
-                        Debug.Log(agent.enabled, this);
-                        agent.SetDestination(policeCar.MinionDestinationTransform.position);
-                    }
-                    break;
-            }
+            currentState.OnExit();
+            currentState = state;
+            this.state = newState;
+            currentState.OnEnter();
         }
         else
-        {
-            Debug.Log(string.Format("Invalid Police state transition: {0}=>{1}", state, newState), this);
-        }
+            Debug.LogError(string.Format("Invalid Police state transition: {0}=>{1}", currentState.Name, state.Name), this);
     }
 
-    public Slot<Police, Minion> GetAvaliableSlot()
+    public void SetTargetSlot(Slot<Minion, Police> targetSlot)
     {
-        for (int i = 0; i < slots.Length; i++)
-            if (!slots[i].IsOccupied()) return slots[i];
-        return null;
-    }
-
-    public void SetTargetMinion(Minion targetMinion)
-    {
-        this.targetMinion = targetMinion;
-        targetMinion.ChasingBy = this;
-        targetMinionTransform = targetMinion.transform;
+        this.targetSlot = targetSlot;
+        targetSlot.Occupy(this);
     }
 
     public void GetOnPoliceCar()
     {
-        policeCar.RemovePolice(this);
+        policeCar.DeactivatePolice(this);
     }
 
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Police Car")) inPoliceCar = true;
-        if (state == PoliceState.GOING_TO_MINION && other.CompareTag("Minion"))
+        else if (other.CompareTag("Minion"))
         {
             Minion minion = other.GetComponent<Minion>();
-            if (minion == targetMinion)
-            {
-                ChangeState(PoliceState.CARRYING_MINION);
-            }
+            if (!overlapMinions.Contains(minion))
+                overlapMinions.Add(minion);
         }
-        else if (state == PoliceState.RETURNING && inPoliceCar)
-        {
-            GetOnPoliceCar();
-        }
-        else if (state == PoliceState.BEING_CARRIED && other.CompareTag("Truck"))
-        {
-            for (int i = 0; i < slots.Length; i++)
-            {
-                Minion minion = slots[i].OccupiedBy;
-                minion.ChangeState(Minion.MinionState.RETURNING);
-                minion.EnterToTheVehicle(truck.Transform);
-            }
-            truck.Bounce(1.3f);
-            EnterToTheVehicle(truck.Transform);
-        }
+        currentState.OnTriggerEnter(other);
     }
 
-    public void AssignTask(Minion target)
+    public void AssignTask(Slot<Minion, Police> slot)
     {
-        SetTargetMinion(target);
+        SetTargetSlot(slot);
         ChangeState(PoliceState.GOING_TO_MINION);
+    }
+
+    public void AbandonCurrentSlot()
+    {
+        if (currentSlot != null)
+        {
+            currentSlot.Abandon();
+            _transform.parent = null;
+            currentSlot = null;
+        }
     }
 
     private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Police Car")) inPoliceCar = false;
-    }
-
-    public void GetAbandoned()
-    {
-        print("Police abandon");
+        else if (other.CompareTag("Minion"))
+        {
+            Minion minion = other.GetComponent<Minion>();
+            if (overlapMinions.Contains(minion))
+                overlapMinions.Remove(minion);
+        }
+        currentState.OnTriggerExit(other);
     }
 
     public void OnObjectSpawn()
     {
-        state = PoliceState.RETURNING;
-        _transform.localScale = Vector3.one;
+        agent.enabled = false;
+        anim.enabled = false;
+        inPoliceCar = false;
+        state = PoliceState.INACTIVE;
+        currentState = stateDictionary[PoliceState.INACTIVE];
+        meshTransform.localScale = Vector3.one;
     }
     public void EnterToTheVehicle(Transform target)
     {
-        boxCollider.enabled = false;
         agent.enabled = false;
         _transform.LeanScale(Vector3.zero, 0.5f);
         ProjectileMotion.SimulateProjectileMotion(_transform, target.position, 0.5f, () =>
@@ -213,5 +146,5 @@ public class Police/* : MonoBehaviour, IMoveable, IPooledObject*/
         });
     }
 
-    public enum PoliceState { GOING_TO_MINION, CARRYING_MINION, BEING_CARRIED, RETURNING }
-*/}
+    public enum PoliceState { INACTIVE, GOING_TO_MINION, CARRYING_MINION, RETURNING, GETTING_IN_POLICE_CAR }
+}

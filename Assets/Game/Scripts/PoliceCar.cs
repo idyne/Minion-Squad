@@ -5,14 +5,15 @@ using UnityEngine;
 using System.Linq;
 
 public class PoliceCar : MonoBehaviour
-{/*
-    [SerializeField] private int maxNumberOfPolices = 5;
+{
+    [SerializeField] private int numberOfPolicesInPoliceCar = 5;
     [SerializeField] private int checkRange = 20;
     [SerializeField] private LayerMask minionLayerMask = 0;
     [SerializeField] private Transform spawnPositionTransform;
     [SerializeField] private Transform minionDestinationTransform;
     [SerializeField] private float spawnCooldown = 3f;
     [SerializeField] private Transform meshTransform = null;
+    private int totalNumberOfPolices = 0;
     private Animator anim;
     private Transform _transform;
     private List<Police> policesOnField = new List<Police>();
@@ -24,6 +25,7 @@ public class PoliceCar : MonoBehaviour
     {
         _transform = transform;
         anim = GetComponent<Animator>();
+        totalNumberOfPolices = numberOfPolicesInPoliceCar;
     }
 
     public void Come()
@@ -49,10 +51,8 @@ public class PoliceCar : MonoBehaviour
         _transform.position = Vector3.MoveTowards(_transform.position, _transform.position + _transform.forward, Time.deltaTime * 1);
     }
 
-    private IEnumerator SearchTaskCoroutine()
+    private Minion FindFurthestMinion(Collider[] colliders)
     {
-        print("Search Task");
-        Collider[] colliders = Physics.OverlapSphere(_transform.position, checkRange, minionLayerMask);
         float maxDistance = 0;
         Minion maxDistanceMinion = null;
         for (int i = 0; i < colliders.Length; i++)
@@ -63,13 +63,21 @@ public class PoliceCar : MonoBehaviour
             if (distance > maxDistance)
             {
                 Minion minion = collider.GetComponent<Minion>();
-                if ((minion.State == Minion.MinionState.HOLDING_STUFF || minion.State == Minion.MinionState.CARRYING_STUFF) && minion.ChasingBy == null)
+                if ((minion.State == Minion.MinionState.HOLDING_STUFF || minion.State == Minion.MinionState.CARRYING_STUFF) && !minion.Slot.IsOccupied())
                 {
                     maxDistance = distance;
                     maxDistanceMinion = minion;
                 }
             }
         }
+        return maxDistanceMinion;
+    }
+
+    private IEnumerator SearchTaskCoroutine()
+    {
+        print("Search Task");
+        Collider[] colliders = Physics.OverlapSphere(_transform.position, checkRange, minionLayerMask);
+        Minion maxDistanceMinion = FindFurthestMinion(colliders);
         if (maxDistanceMinion)
         {
             List<Police> returningPolices = policesOnField.Where((police) => police.State == Police.PoliceState.RETURNING).ToList();
@@ -87,7 +95,7 @@ public class PoliceCar : MonoBehaviour
                         minDistancePolice = police;
                     }
                 }
-                minDistancePolice.AssignTask(maxDistanceMinion);
+                minDistancePolice.AssignTask(maxDistanceMinion.Slot);
             }
             else
                 SpawnPolice(maxDistanceMinion);
@@ -95,33 +103,23 @@ public class PoliceCar : MonoBehaviour
         yield return new WaitForSeconds(spawnCooldown);
         SearchTask();
     }
-
-
     private Police SpawnPolice(Minion target)
     {
-        if (policesOnField.Count < maxNumberOfPolices)
+        if (0 < numberOfPolicesInPoliceCar)
         {
+            numberOfPolicesInPoliceCar--;
             Transform policeTransform = ObjectPooler.Instance.SpawnFromPool("Police", spawnPositionTransform.position, Quaternion.identity).transform;
             Police police = policeTransform.GetComponent<Police>();
             policesOnField.Add(police);
-            police.AssignTask(target);
+            police.AssignTask(target.Slot);
             return police;
         }
         return null;
     }
-
-
-    public void RemovePolice(Police police)
+    public void DeactivatePolice(Police police)
     {
         policesOnField.Remove(police);
+        numberOfPolicesInPoliceCar++;
         police.gameObject.SetActive(false);
     }
-    public void Bounce(float size)
-    {
-        LeanTween.cancel(meshTransform.gameObject);
-        meshTransform.LeanScale(new Vector3(size, size, 1), 0.15f).setOnComplete(() =>
-        {
-            meshTransform.LeanScale(Vector3.one, 0.15f);
-        });
-    }*/
 }

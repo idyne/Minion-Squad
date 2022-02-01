@@ -11,7 +11,7 @@ namespace States.MinionState
         }
         public override bool CanEnter()
         {
-            return minion.State == Minion.MinionState.GOING_TO_STUFF;
+            return minion.State == Minion.MinionState.GOING_TO_STUFF || minion.State == Minion.MinionState.CARRYING_STUFF;
         }
 
         //Target Slot Occupy edildi
