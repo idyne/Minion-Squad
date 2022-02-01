@@ -20,6 +20,7 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
     [SerializeField] private float carryingSpeed = 2.5f;
     [SerializeField] private Slot<Minion, Police> slot;
     private List<Stuff> overlapStuffs = new List<Stuff>();
+    private List<Police> overlapPolices = new List<Police>();
     private static Truck truck = null;
     private MinionState state = MinionState.INACTIVE;
     private State currentState;
@@ -31,7 +32,8 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
     private Slot<Stuff, Minion> currentSlot = null;
     private bool inTruck = false;
     private bool inPoliceCar = false;
-    private Minion targetMinion = null;
+    private Slot<Police, Minion> targetPoliceSlot = null;
+    private Slot<Police, Minion> currentPoliceSlot = null;
     private List<MinionState> transitionLog = new List<MinionState>();
     public ProjectileMotion.Motion Motion;
     private float stateTime = -1;
@@ -44,7 +46,6 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
     public Animator Animator { get => anim; }
     public Slot<Stuff, Minion> TargetSlot { get => targetSlot; set => targetSlot = value; }
     public bool InTruck { get => inTruck; set => inTruck = value; }
-    public Minion TargetMinion { get => targetMinion; set => targetMinion = value; }
     public float StateTime { get => stateTime; set => stateTime = value; }
     public float NormalSpeed { get => normalSpeed; }
     public static Truck Truck { get => truck; }
@@ -53,6 +54,9 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
     public Slot<Minion, Police> Slot { get => slot; }
     public bool InPoliceCar { get => inPoliceCar; }
     public Transform MeshTransform { get => meshTransform; }
+    public Slot<Police, Minion> TargetPoliceSlot { get => targetPoliceSlot; set => targetPoliceSlot = value; }
+    public Slot<Police, Minion> CurrentPoliceSlot { get => currentPoliceSlot; set => currentPoliceSlot = value; }
+    public List<Police> OverlapPolices { get => overlapPolices; }
     #endregion
 
     #region Unity Callbacks
@@ -78,6 +82,9 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         stateDictionary.Add(MinionState.ARREST_ANIMATING, new ArrestAnimating(this, "ARREST_ANIMATING"));
         stateDictionary.Add(MinionState.RETURNING, new Returning(this, "RETURNING"));
         stateDictionary.Add(MinionState.RETURN_ANIMATING, new ReturnAnimating(this, "RETURN_ANIMATING"));
+        stateDictionary.Add(MinionState.GOING_TO_RESCUE, new GoingToRescue(this, "GOING_TO_RESCUE"));
+        stateDictionary.Add(MinionState.BEING_RESCUED, new BeingRescued(this, "BEING_RESCUED"));
+        stateDictionary.Add(MinionState.CARRYING_POLICE, new CarryingPolice(this, "CARRYING_POLICE"));
         stateDictionary.Add(MinionState.INACTIVE, new Inactive(this, "INACTIVE"));
     }
     private void Update()
@@ -94,6 +101,12 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
             if (!overlapStuffs.Contains(stuff))
                 overlapStuffs.Add(stuff);
         }
+        else if (other.CompareTag("Police"))
+        {
+            Police police = other.GetComponent<Police>();
+            if (!overlapPolices.Contains(police))
+                overlapPolices.Add(police);
+        }
         currentState.OnTriggerEnter(other);
     }
 
@@ -106,6 +119,12 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
             Stuff stuff = other.GetComponent<Stuff>();
             if (overlapStuffs.Contains(stuff))
                 overlapStuffs.Remove(stuff);
+        }
+        else if (other.CompareTag("Police"))
+        {
+            Police police = other.GetComponent<Police>();
+            if (overlapPolices.Contains(police))
+                overlapPolices.Remove(police);
         }
         currentState.OnTriggerExit(other);
     }
@@ -138,9 +157,15 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         bool isTaskAssigned = false;
         taskType = TaskType.NONE;
         Collider[] colliders = Physics.OverlapSphere(_transform.position, stuffCheckRadius, stuffLayermask);
-        if (SearchStuffTask(colliders, out Slot<Stuff, Minion> slot))
+        if (SearchRescueTask(colliders, out Slot<Police, Minion> policeSlot))
         {
-            targetSlot = slot;
+            targetPoliceSlot = policeSlot;
+            taskType = TaskType.RESCUE;
+            isTaskAssigned = true;
+        }
+        else if (SearchStuffTask(colliders, out Slot<Stuff, Minion> stuffSlot))
+        {
+            targetSlot = stuffSlot;
             taskType = TaskType.STUFF;
             isTaskAssigned = true;
         }
@@ -186,6 +211,36 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         return isTaskAssigned;
     }
 
+    private bool SearchRescueTask(Collider[] colliders, out Slot<Police, Minion> targetSlot)
+    {
+        targetSlot = null;
+        bool isTaskAssigned = false;
+        Collider[] minionColliders = colliders.Where((collider) => collider.CompareTag("Minion")).ToArray();
+        if (minionColliders.Length > 0)
+        {
+            float minDistance = int.MaxValue;
+            Minion minDistanceMinion = null;
+            for (int i = 0; i < minionColliders.Length; i++)
+            {
+                Collider collider = minionColliders[i];
+                Minion minion = collider.GetComponent<Minion>();
+                if (minion.state != MinionState.ARRESTED) continue;
+                Transform colliderTransform = collider.transform;
+                float distance = Vector3.SqrMagnitude(colliderTransform.position - _transform.position);
+                if (distance < minDistance)
+                {
+                    minDistanceMinion = minion;
+                }
+            }
+            if (minDistanceMinion)
+            {
+                targetSlot = minDistanceMinion.Slot.OccupiedBy.GetAvaliableSlot();
+                isTaskAssigned = true;
+            }
+        }
+        return isTaskAssigned;
+    }
+
     public enum TaskType { STUFF, RESCUE, NONE }
 
 
@@ -219,10 +274,14 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
         agent.enabled = false;
         anim.enabled = false;
         targetSlot = null;
-        targetMinion = null;
         currentSlot = null;
+        targetPoliceSlot = null;
+        currentPoliceSlot = null;
         rb.isKinematic = false;
         inTruck = false;
+        inPoliceCar = false;
+        overlapPolices.Clear();
+        overlapStuffs.Clear();
         meshTransform.localScale = Vector3.one;
         state = MinionState.INACTIVE;
         currentState = stateDictionary[state];
@@ -230,6 +289,5 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
 
     public void GetAbandoned()
     {
-        Debug.Log("GetAbandoned()", this);
     }
 }

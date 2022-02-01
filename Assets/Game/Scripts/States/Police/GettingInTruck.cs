@@ -4,21 +4,21 @@ using UnityEngine;
 
 namespace States.PoliceState
 {
-    public class GettingInPoliceCar : State
+    public class GettingInTruck : State
     {
-        public GettingInPoliceCar(Police police, string name) : base(police, name)
+        public GettingInTruck(Police police, string name) : base(police, name)
         {
         }
         public override bool CanEnter()
         {
-            return police.State == Police.PoliceState.RETURNING;
+            return police.State == Police.PoliceState.BEING_CARRIED;
         }
 
         public override void OnEnter()
         {
             police.MeshTransform.LeanScale(Vector3.zero, 0.2f).setOnComplete(() =>
             {
-                Police.PoliceCar.DeactivatePolice(police);
+                Police.PoliceCar.LosePolice(police);
             });
         }
 

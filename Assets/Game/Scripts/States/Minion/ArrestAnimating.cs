@@ -11,7 +11,8 @@ namespace States.MinionState
         }
         public override bool CanEnter()
         {
-            return minion.State == Minion.MinionState.ARRESTED;
+            return minion.State == Minion.MinionState.ARRESTED ||
+                minion.State == Minion.MinionState.BEING_RESCUED;
         }
 
         public override void OnEnter()

@@ -13,12 +13,14 @@ namespace States.MinionState
         {
             return minion.State == Minion.MinionState.AVALIABLE ||
                 minion.State == Minion.MinionState.HOLDING_STUFF ||
-                minion.State == Minion.MinionState.CARRYING_STUFF;
+                minion.State == Minion.MinionState.CARRYING_STUFF ||
+                minion.State == Minion.MinionState.GOING_TO_RESCUE;
         }
 
         public override void OnEnter()
         {
             minion.Agent.enabled = true;
+            minion.TargetPoliceSlot = null;
             if (!minion.InTruck)
                 minion.Agent.SetDestination(Minion.Truck.transform.position);
             else

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using TMPro;
 
 public class PoliceCar : MonoBehaviour
 {
@@ -13,6 +14,8 @@ public class PoliceCar : MonoBehaviour
     [SerializeField] private Transform minionDestinationTransform;
     [SerializeField] private float spawnCooldown = 3f;
     [SerializeField] private Transform meshTransform = null;
+    [SerializeField] private TextMeshProUGUI numberText;
+
     private int totalNumberOfPolices = 0;
     private Animator anim;
     private Transform _transform;
@@ -45,6 +48,12 @@ public class PoliceCar : MonoBehaviour
             MoveForward();
         }
     }
+
+    private void SetNumberText()
+    {
+        numberText.text = numberOfPolicesInPoliceCar + "/" + totalNumberOfPolices;
+    }
+
 
     private void MoveForward()
     {
@@ -112,6 +121,7 @@ public class PoliceCar : MonoBehaviour
             Police police = policeTransform.GetComponent<Police>();
             policesOnField.Add(police);
             police.AssignTask(target.Slot);
+            SetNumberText();
             return police;
         }
         return null;
@@ -120,6 +130,16 @@ public class PoliceCar : MonoBehaviour
     {
         policesOnField.Remove(police);
         numberOfPolicesInPoliceCar++;
+        police.ChangeState(Police.PoliceState.INACTIVE);
+        SetNumberText();
+    }
+
+    public void LosePolice(Police police)
+    {
+        policesOnField.Remove(police);
+        police.ChangeState(Police.PoliceState.INACTIVE);
         police.gameObject.SetActive(false);
+        totalNumberOfPolices--;
+        SetNumberText();
     }
 }

@@ -11,12 +11,13 @@ namespace States.PoliceState
         }
         public override bool CanEnter()
         {
-            return police.State == Police.PoliceState.GETTING_IN_POLICE_CAR;
+            return police.State == Police.PoliceState.GETTING_IN_POLICE_CAR ||
+                police.State == Police.PoliceState.GETTING_IN_TRUCK;
         }
 
         public override void OnEnter()
         {
-
+            police.gameObject.SetActive(false);
         }
 
         public override void OnExit()

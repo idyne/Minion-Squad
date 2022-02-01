@@ -46,7 +46,7 @@ GameObject:
   - component: {fileID: 844859297089167547}
   m_Layer: 8
   m_Name: Police
-  m_TagString: Untagged
+  m_TagString: Police
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -81,6 +81,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   normalSpeed: 3.5
+  slots:
+  - slotTransform: {fileID: 9193885490814038550}
+    owner: {fileID: 4824329865806114174}
+    IsReached: 0
+  - slotTransform: {fileID: 5453409326887330887}
+    owner: {fileID: 4824329865806114174}
+    IsReached: 0
   meshTransform: {fileID: 2145653952688819009}
 --- !u!95 &9201718218212150040
 Animator:

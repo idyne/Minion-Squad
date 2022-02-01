@@ -10,6 +10,7 @@ TagManager:
   - Minion
   - Police Car
   - Truck
+  - Police
   layers:
   - Default
   - TransparentFX

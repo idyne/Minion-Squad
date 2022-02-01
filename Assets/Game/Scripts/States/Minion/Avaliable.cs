@@ -18,8 +18,11 @@ namespace States.MinionState
         {
             if (minion.SearchTask(out Minion.TaskType taskType))
             {
+                // targetPoliceSlot Search Task sýrasýnda atandý
+                if(taskType == Minion.TaskType.RESCUE)
+                    minion.ChangeState(Minion.MinionState.GOING_TO_RESCUE);
                 // targetSlot Search Task sýrasýnda atandý
-                if (taskType == Minion.TaskType.STUFF)
+                else if (taskType == Minion.TaskType.STUFF)
                     minion.ChangeState(Minion.MinionState.GOING_TO_STUFF);
             }
             else

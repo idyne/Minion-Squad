@@ -7,9 +7,10 @@ using States.PoliceState;
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(NavMeshAgent))]
-public class Police : MonoBehaviour, IPooledObject
+public class Police : MonoBehaviour, IPooledObject, IMoveable
 {
     [SerializeField] private float normalSpeed = 3.5f;
+    [SerializeField] private Slot<Police, Minion>[] slots;
     [SerializeField] private Transform meshTransform = null;
     private static PoliceCar policeCar = null;
     private PoliceState state = PoliceState.GOING_TO_MINION;
@@ -22,6 +23,7 @@ public class Police : MonoBehaviour, IPooledObject
     private bool inPoliceCar = false;
     private Dictionary<PoliceState, State> stateDictionary = new Dictionary<PoliceState, State>();
     private List<Minion> overlapMinions = new List<Minion>();
+    private bool inTruck = false;
 
 
 
@@ -35,6 +37,9 @@ public class Police : MonoBehaviour, IPooledObject
     public static PoliceCar PoliceCar { get => policeCar; }
     public List<Minion> OverlapMinions { get => overlapMinions; }
     public Slot<Minion, Police> CurrentSlot { get => currentSlot; set => currentSlot = value; }
+    public Slot<Police, Minion>[] Slots { get => slots; }
+    public Transform MeshTransform { get => meshTransform; }
+    public bool InTruck { get => inTruck; }
 
     private void Awake()
     {
@@ -52,6 +57,8 @@ public class Police : MonoBehaviour, IPooledObject
         stateDictionary.Add(PoliceState.INACTIVE, new Inactive(this, "INACTIVE"));
         stateDictionary.Add(PoliceState.GOING_TO_MINION, new GoingToMinion(this, "GOING_TO_MINION"));
         stateDictionary.Add(PoliceState.CARRYING_MINION, new CarryingMinion(this, "CARRYING_MINION"));
+        stateDictionary.Add(PoliceState.BEING_CARRIED, new BeingCarried(this, "BEING_CARRIED"));
+        stateDictionary.Add(PoliceState.GETTING_IN_TRUCK, new GettingInTruck(this, "GETTING_IN_TRUCK"));
         stateDictionary.Add(PoliceState.RETURNING, new Returning(this, "RETURNING"));
         stateDictionary.Add(PoliceState.GETTING_IN_POLICE_CAR, new GettingInPoliceCar(this, "GETTING_IN_POLICE_CAR"));
     }
@@ -81,15 +88,24 @@ public class Police : MonoBehaviour, IPooledObject
         targetSlot.Occupy(this);
     }
 
+    public Slot<Police, Minion> GetAvaliableSlot()
+    {
+        for (int i = 0; i < slots.Length; i++)
+            if (!slots[i].IsOccupied()) return slots[i];
+        Debug.LogError("Burada bir sorun var!", this);
+        return null;
+    }
+
     public void GetOnPoliceCar()
     {
-        policeCar.DeactivatePolice(this);
+        ChangeState(PoliceState.GETTING_IN_POLICE_CAR);
     }
 
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Police Car")) inPoliceCar = true;
+        if (other.CompareTag("Truck")) inTruck = true;
+        else if (other.CompareTag("Police Car")) inPoliceCar = true;
         else if (other.CompareTag("Minion"))
         {
             Minion minion = other.GetComponent<Minion>();
@@ -117,7 +133,8 @@ public class Police : MonoBehaviour, IPooledObject
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Police Car")) inPoliceCar = false;
+        if (other.CompareTag("Truck")) inTruck = false;
+        else if (other.CompareTag("Police Car")) inPoliceCar = false;
         else if (other.CompareTag("Minion"))
         {
             Minion minion = other.GetComponent<Minion>();
@@ -132,6 +149,10 @@ public class Police : MonoBehaviour, IPooledObject
         agent.enabled = false;
         anim.enabled = false;
         inPoliceCar = false;
+        inTruck = false;
+        overlapMinions.Clear();
+        for (int i = 0; i < slots.Length; i++)
+            slots[i].Clear();
         state = PoliceState.INACTIVE;
         currentState = stateDictionary[PoliceState.INACTIVE];
         meshTransform.localScale = Vector3.one;
@@ -146,5 +167,10 @@ public class Police : MonoBehaviour, IPooledObject
         });
     }
 
-    public enum PoliceState { INACTIVE, GOING_TO_MINION, CARRYING_MINION, RETURNING, GETTING_IN_POLICE_CAR }
+    public void GetAbandoned()
+    {
+        Debug.Log("Police GetAbandoned()", this);
+    }
+
+    public enum PoliceState { INACTIVE, GETTING_IN_TRUCK, GOING_TO_MINION, CARRYING_MINION, BEING_CARRIED, RETURNING, GETTING_IN_POLICE_CAR }
 }

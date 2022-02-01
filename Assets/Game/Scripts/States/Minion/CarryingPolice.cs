@@ -4,35 +4,31 @@ using UnityEngine;
 
 namespace States.MinionState
 {
-    public class ReturnAnimating : State
+    public class CarryingPolice : State
     {
-        public ReturnAnimating(Minion minion, string name) : base(minion, name)
+        public CarryingPolice(Minion minion, string name) : base(minion, name)
         {
         }
         public override bool CanEnter()
         {
-            return minion.State == Minion.MinionState.RETURNING ||
-                minion.State == Minion.MinionState.CARRYING_POLICE;
+            return minion.State == Minion.MinionState.BEING_RESCUED ||
+                minion.State == Minion.MinionState.GOING_TO_RESCUE;
         }
-
         public override void OnEnter()
         {
-            minion.GetOnTruck();
+            minion.Agent.enabled = false;
+            minion.Transform.parent = minion.CurrentPoliceSlot.SlotTransform;
+            minion.Transform.SetPositionAndRotation(minion.CurrentPoliceSlot.SlotTransform.position, minion.CurrentPoliceSlot.SlotTransform.rotation);
         }
-
         public override void OnExit()
         {
         }
-
-
         public override void OnTriggerEnter(Collider other)
         {
         }
-
         public override void OnTriggerExit(Collider other)
         {
         }
-
         public override void Update()
         {
         }
