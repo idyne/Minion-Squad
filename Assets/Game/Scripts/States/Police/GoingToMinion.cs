@@ -37,7 +37,13 @@ namespace States.PoliceState
             {
                 Minion minion = other.GetComponent<Minion>();
                 if (minion == police.TargetSlot.Owner)
-                    police.ChangeState(Police.PoliceState.CARRYING_MINION);
+                {
+                    if (minion.State != Minion.MinionState.RETURN_ANIMATING)
+                        police.ChangeState(Police.PoliceState.CARRYING_MINION);
+                    else
+                        police.ChangeState(Police.PoliceState.RETURNING);
+
+                }
             }
         }
 

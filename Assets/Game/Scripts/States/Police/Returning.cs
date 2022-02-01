@@ -21,6 +21,7 @@ namespace States.PoliceState
             police.Anim.enabled = true;
             police.Agent.speed = police.NormalSpeed;
             police.Transform.parent = null;
+            if (police.CurrentSlot != null) Debug.LogError("AHA", police);
             if (police.InPoliceCar)
                 police.GetOnPoliceCar();
             else
