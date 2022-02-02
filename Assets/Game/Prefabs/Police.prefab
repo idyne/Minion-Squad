@@ -80,7 +80,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25a4f354db1c61c499dfd1f7084b7921, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  normalSpeed: 3.5
+  normalSpeed: 7
+  carryingSpeed: 6
   slots:
   - slotTransform: {fileID: 9193885490814038550}
     owner: {fileID: 4824329865806114174}

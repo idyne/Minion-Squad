@@ -8,12 +8,12 @@ namespace FateGames
         #region Properties
         [SerializeField] private int targetFrameRate = -1;
         private LevelManager levelManager;
-        public LevelManager LevelManager { get => levelManager; }
+        public LevelManager LevelManager { get => levelManager;}
         #endregion
 
         private void Initialize()
         {
-            if (!AvoidDuplication()) return;
+            AvoidDuplication();
             Application.targetFrameRate = targetFrameRate;
             AnalyticsManager.Initialize();
             FacebookManager.Initialize(SceneManager.LoadCurrentLevel);
@@ -43,17 +43,15 @@ namespace FateGames
         public static GameManager Instance { get => instance; }
 
 
-        private bool AvoidDuplication()
+        private void AvoidDuplication()
         {
             if (!instance)
             {
                 DontDestroyOnLoad(gameObject);
                 instance = this;
-                return true;
             }
             else
                 DestroyImmediate(gameObject);
-            return false;
         }
 
         #endregion
@@ -90,7 +88,7 @@ namespace FateGames
         #region State Management
         private GameState state = GameState.LOADING_SCREEN;
         public GameState State { get => state; }
-
+        
 
         public void UpdateGameState(GameState newState)
         {

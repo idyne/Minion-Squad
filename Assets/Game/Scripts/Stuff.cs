@@ -9,6 +9,7 @@ using States.StuffState;
 [RequireComponent(typeof(Rigidbody))]
 public class Stuff : MonoBehaviour, IMoveable
 {
+    [SerializeField] private Transform meshTransform;
     [SerializeField] private Slot<Stuff, Minion>[] slots;
     private static Truck truck = null;
     private StuffState state = StuffState.IDLE;

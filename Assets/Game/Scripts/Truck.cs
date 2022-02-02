@@ -78,6 +78,7 @@ public class Truck : MonoBehaviour
                 ProjectileMotion.Motion motion = minionTransform.CreateProjectileMotion(to, time);
                 minion.Motion = motion;
                 minion.ChangeState(Minion.MinionState.ON_AIR);
+                HapticManager.Instance.DoHaptic();
                 SetNumberText();
             }
         }
@@ -89,6 +90,7 @@ public class Truck : MonoBehaviour
         minionsOnField.Remove(minion);
         minion.ChangeState(Minion.MinionState.INACTIVE);
         minion.gameObject.SetActive(false);
+        HapticManager.Instance.DoHaptic();
         SetNumberText();
     }
 

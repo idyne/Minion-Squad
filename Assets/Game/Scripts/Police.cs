@@ -10,6 +10,7 @@ using States.PoliceState;
 public class Police : MonoBehaviour, IPooledObject, IMoveable
 {
     [SerializeField] private float normalSpeed = 3.5f;
+    [SerializeField] private float carryingSpeed = 3.5f;
     [SerializeField] private Slot<Police, Minion>[] slots;
     [SerializeField] private Transform meshTransform = null;
     private static PoliceCar policeCar = null;
@@ -40,6 +41,7 @@ public class Police : MonoBehaviour, IPooledObject, IMoveable
     public Slot<Police, Minion>[] Slots { get => slots; }
     public Transform MeshTransform { get => meshTransform; }
     public bool InTruck { get => inTruck; }
+    public float CarryingSpeed { get => carryingSpeed; }
 
     private void Awake()
     {

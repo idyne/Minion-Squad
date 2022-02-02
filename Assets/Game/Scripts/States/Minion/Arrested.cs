@@ -22,6 +22,7 @@ namespace States.MinionState
             if (!minion.InPoliceCar)
             {
                 minion.Agent.enabled = true;
+                minion.Agent.speed = minion.CarryingSpeed;
                 minion.Agent.SetDestination(Police.PoliceCar.Transform.position);
             }
             else
@@ -34,7 +35,7 @@ namespace States.MinionState
 
         public override void OnExit()
         {
-
+            minion.Agent.speed = minion.NormalSpeed;
         }
 
         public override void OnTriggerEnter(Collider other)

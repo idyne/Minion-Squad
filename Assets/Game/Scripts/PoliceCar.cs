@@ -31,6 +31,11 @@ public class PoliceCar : MonoBehaviour
         totalNumberOfPolices = numberOfPolicesInPoliceCar;
     }
 
+    private void Start()
+    {
+        SetNumberText();
+    }
+
     public void Come()
     {
         anim.SetTrigger("Come");

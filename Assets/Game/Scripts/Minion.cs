@@ -57,6 +57,7 @@ public class Minion : MonoBehaviour, IPooledObject, IMoveable
     public Slot<Police, Minion> TargetPoliceSlot { get => targetPoliceSlot; set => targetPoliceSlot = value; }
     public Slot<Police, Minion> CurrentPoliceSlot { get => currentPoliceSlot; set => currentPoliceSlot = value; }
     public List<Police> OverlapPolices { get => overlapPolices; }
+    public float CarryingSpeed { get => carryingSpeed; }
     #endregion
 
     #region Unity Callbacks

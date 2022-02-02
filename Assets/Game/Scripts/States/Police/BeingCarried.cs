@@ -18,6 +18,7 @@ namespace States.PoliceState
         {
             if (!police.InTruck)
             {
+                police.Agent.speed = police.CarryingSpeed;
                 police.Agent.enabled = true;
                 police.Agent.SetDestination(Minion.Truck.Transform.position);
             }
@@ -43,6 +44,7 @@ namespace States.PoliceState
 
         public override void OnExit()
         {
+            police.Agent.speed = police.NormalSpeed;
         }
 
 
